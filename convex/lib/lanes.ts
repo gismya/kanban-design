@@ -1,10 +1,6 @@
 import type { Doc } from '../_generated/dataModel'
 import { CORE_LANE_IDS, CORE_LANE_LABELS, DEFAULT_PROJECT_LANES } from './validators'
-
-export interface ProjectLane {
-  id: string
-  name: string
-}
+import type { ProjectLane } from '../../shared/lanes'
 
 const LANE_ID_PATTERN = /^[a-z][a-z0-9_]*$/
 
@@ -105,4 +101,3 @@ export function getDefaultTaskLaneId(lanes: ProjectLane[]) {
 
   return 'backlog'
 }
-

@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
   type CreateTaskInput,
+  DEFAULT_TASK_PRIORITY,
   type ProjectLane,
+  TASK_PRIORITIES,
   type Task,
   type TaskPriority,
   type TaskStatus,
@@ -35,7 +37,7 @@ interface TaskFormState {
   estimatePoints: string
 }
 
-const priorityOptions: TaskPriority[] = ['low', 'medium', 'high', 'urgent']
+const priorityOptions: TaskPriority[] = [...TASK_PRIORITIES]
 
 export function TaskModal({
   isOpen,
@@ -53,7 +55,7 @@ export function TaskModal({
     title: '',
     description: '',
     status: defaultStatus,
-    priority: 'medium',
+    priority: DEFAULT_TASK_PRIORITY,
     assigneeId: members[0]?.userId ?? '',
     dueDate: '',
     tags: '',
@@ -85,7 +87,7 @@ export function TaskModal({
         title: '',
         description: '',
         status: lanes.some((lane) => lane.id === defaultStatus) ? defaultStatus : lanes[0]?.id ?? 'backlog',
-        priority: 'medium',
+        priority: DEFAULT_TASK_PRIORITY,
         assigneeId: currentAssignee,
         dueDate: '',
         tags: '',

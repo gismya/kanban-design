@@ -1,27 +1,12 @@
 import { v } from 'convex/values'
+import { CORE_LANE_IDS, CORE_LANE_LABELS, DEFAULT_PROJECT_LANES } from '../../shared/lanes'
+import { PROJECT_ROLES, TASK_PRIORITIES } from '../../shared/domain'
+import type { ProjectRole, TaskPriority } from '../../shared/domain'
 
-export const CORE_LANE_IDS = ['backlog', 'in_progress', 'done'] as const
+export { CORE_LANE_IDS, CORE_LANE_LABELS, DEFAULT_PROJECT_LANES }
+export { PROJECT_ROLES, TASK_PRIORITIES }
 export type CoreLaneId = (typeof CORE_LANE_IDS)[number]
-
-export const CORE_LANE_LABELS: Record<CoreLaneId, string> = {
-  backlog: 'Backlog',
-  in_progress: 'In Progress',
-  done: 'Done',
-}
-
-export const DEFAULT_PROJECT_LANES = [
-  { id: 'backlog', name: 'Backlog' },
-  { id: 'todo', name: 'To Do' },
-  { id: 'in_progress', name: 'In Progress' },
-  { id: 'review', name: 'Review' },
-  { id: 'done', name: 'Done' },
-] as const
-
-export const TASK_PRIORITIES = ['low', 'medium', 'high', 'urgent'] as const
-export type TaskPriority = (typeof TASK_PRIORITIES)[number]
-
-export const PROJECT_ROLES = ['owner', 'admin', 'member'] as const
-export type ProjectRole = (typeof PROJECT_ROLES)[number]
+export type { ProjectRole, TaskPriority }
 
 export const taskStatusValidator = v.string()
 
@@ -32,11 +17,14 @@ export const projectLaneValidator = v.object({
 
 export const projectLanesValidator = v.array(projectLaneValidator)
 
+const [lowPriority, mediumPriority, highPriority, urgentPriority] = TASK_PRIORITIES
+const [ownerRole, adminRole, memberRole] = PROJECT_ROLES
+
 export const taskPriorityValidator = v.union(
-  v.literal('low'),
-  v.literal('medium'),
-  v.literal('high'),
-  v.literal('urgent'),
+  v.literal(lowPriority),
+  v.literal(mediumPriority),
+  v.literal(highPriority),
+  v.literal(urgentPriority),
 )
 
-export const projectRoleValidator = v.union(v.literal('owner'), v.literal('admin'), v.literal('member'))
+export const projectRoleValidator = v.union(v.literal(ownerRole), v.literal(adminRole), v.literal(memberRole))

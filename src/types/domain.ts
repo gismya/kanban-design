@@ -1,27 +1,28 @@
-export interface ProjectLane {
-  id: string
-  name: string
-}
+import type { ProjectLane as SharedProjectLane } from '../../shared/lanes'
+import type {
+  ProjectRole as SharedProjectRole,
+  TaskPriority as SharedTaskPriority,
+} from '../../shared/domain'
 
-export const CORE_LANE_LABELS = {
-  backlog: 'Backlog',
-  in_progress: 'In Progress',
-  done: 'Done',
-} as const
+export type ProjectLane = SharedProjectLane
 
-export const DEFAULT_PROJECT_LANES: ProjectLane[] = [
-  { id: 'backlog', name: 'Backlog' },
-  { id: 'todo', name: 'To Do' },
-  { id: 'in_progress', name: 'In Progress' },
-  { id: 'review', name: 'Review' },
-  { id: 'done', name: 'Done' },
-]
+export { CORE_LANE_LABELS, DEFAULT_PROJECT_LANES } from '../../shared/lanes'
+export {
+  ADMIN_PROJECT_ROLE,
+  DEFAULT_PROJECT_ROLE,
+  DEFAULT_TASK_PRIORITY,
+  MEMBER_PROJECT_ROLE,
+  OWNER_PROJECT_ROLE,
+  PROJECT_ROLES,
+  TASK_PRIORITIES,
+  canManageProject,
+} from '../../shared/domain'
 
 export type TaskStatus = string
 
-export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent'
+export type TaskPriority = SharedTaskPriority
 
-export type ProjectRole = 'owner' | 'admin' | 'member'
+export type ProjectRole = SharedProjectRole
 
 export interface User {
   userId: string

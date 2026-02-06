@@ -5,6 +5,7 @@ import { v } from 'convex/values'
 import { requireUserId } from './lib/authHelpers'
 import { normalizeLaneDrafts, resolveProjectLanes } from './lib/lanes'
 import { projectLanesValidator } from './lib/validators'
+import { canManageProject, OWNER_PROJECT_ROLE } from '../shared/domain'
 
 type DbContext = Pick<QueryCtx, 'db'> | Pick<MutationCtx, 'db'>
 
@@ -13,10 +14,6 @@ async function getMembership(ctx: DbContext, projectId: Id<'projects'>, userId: 
     .query('projectMembers')
     .withIndex('by_project_user', (q) => q.eq('projectId', projectId).eq('userId', userId))
     .unique()
-}
-
-function canManageProject(role: Doc<'projectMembers'>['role']) {
-  return role === 'owner' || role === 'admin'
 }
 
 async function resolveMemberProfile(ctx: DbContext, userId: Id<'users'>) {
@@ -155,7 +152,7 @@ export const createProject = mutation({
     await ctx.db.insert('projectMembers', {
       projectId,
       userId,
-      role: 'owner',
+      role: OWNER_PROJECT_ROLE,
       addedBy: userId,
       createdAt: now,
     })

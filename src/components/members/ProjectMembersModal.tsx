@@ -2,7 +2,14 @@ import { useMemo, useState } from 'react'
 import { useMutation, useQuery } from 'convex/react'
 import { api } from '../../../convex/_generated/api'
 import type { Id } from '../../../convex/_generated/dataModel'
-import type { ProjectRole, User } from '../../types/domain'
+import {
+  ADMIN_PROJECT_ROLE,
+  DEFAULT_PROJECT_ROLE,
+  OWNER_PROJECT_ROLE,
+  PROJECT_ROLES,
+  type ProjectRole,
+  type User,
+} from '../../types/domain'
 import { Button } from '../ui/Button'
 import { Input } from '../ui/Input'
 
@@ -15,7 +22,7 @@ interface ProjectMembersModalProps {
   onClose: () => void
 }
 
-const ROLE_OPTIONS: ProjectRole[] = ['owner', 'admin', 'member']
+const ROLE_OPTIONS: ProjectRole[] = [...PROJECT_ROLES]
 
 export function ProjectMembersModal({
   isOpen,
@@ -31,7 +38,7 @@ export function ProjectMembersModal({
   const projectDocId = projectId as Id<'projects'>
 
   const [search, setSearch] = useState('')
-  const [inviteRole, setInviteRole] = useState<ProjectRole>('member')
+  const [inviteRole, setInviteRole] = useState<ProjectRole>(DEFAULT_PROJECT_ROLE)
   const [error, setError] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
 
@@ -41,7 +48,10 @@ export function ProjectMembersModal({
   )
 
   const availableRoleOptions = useMemo(
-    () => (viewerRole === 'owner' ? ROLE_OPTIONS : ROLE_OPTIONS.filter((role) => role !== 'owner')),
+    () =>
+      viewerRole === OWNER_PROJECT_ROLE
+        ? ROLE_OPTIONS
+        : ROLE_OPTIONS.filter((role) => role !== OWNER_PROJECT_ROLE),
     [viewerRole],
   )
 
@@ -122,8 +132,10 @@ export function ProjectMembersModal({
 
         <div className="space-y-3">
           {members.map((member) => {
-            const canEditRole = canManageMembers && !(viewerRole === 'admin' && member.role === 'owner')
-            const canRemove = canManageMembers && !(viewerRole === 'admin' && member.role === 'owner')
+            const canEditRole =
+              canManageMembers && !(viewerRole === ADMIN_PROJECT_ROLE && member.role === OWNER_PROJECT_ROLE)
+            const canRemove =
+              canManageMembers && !(viewerRole === ADMIN_PROJECT_ROLE && member.role === OWNER_PROJECT_ROLE)
 
             return (
               <div

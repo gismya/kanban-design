@@ -1,6 +1,6 @@
-import type { Project } from '../../types/domain'
-import { Button } from '../ui/Button'
+import { canManageProject, type Project } from '../../types/domain'
 import { Badge } from '../ui/Badge'
+import { Button } from '../ui/Button'
 
 interface ProjectCardProps {
   project: Project
@@ -10,7 +10,7 @@ interface ProjectCardProps {
 
 export function ProjectCard({ project, onOpen, onOpenSettings }: ProjectCardProps) {
   const openCount = project.openTaskCount
-  const canManageLanes = project.viewerRole === 'owner' || project.viewerRole === 'admin'
+  const canManageLanes = project.viewerRole ? canManageProject(project.viewerRole) : false
 
   return (
     <article className="group relative overflow-hidden rounded-3xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 shadow-[0_8px_26px_rgba(17,24,39,0.08)] transition hover:-translate-y-1 hover:shadow-[0_16px_40px_rgba(17,24,39,0.14)]">
