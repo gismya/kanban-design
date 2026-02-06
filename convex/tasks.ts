@@ -5,6 +5,7 @@ import { v } from 'convex/values'
 import { requireUserId } from './lib/authHelpers'
 import { getDefaultTaskLaneId, hasLane, resolveProjectLanes } from './lib/lanes'
 import { DEFAULT_PROJECT_LANES, taskPriorityValidator, taskStatusValidator } from './lib/validators'
+import { DEFAULT_TASK_PRIORITY } from '../shared/domain'
 
 type DbContext = Pick<QueryCtx, 'db'> | Pick<MutationCtx, 'db'>
 
@@ -114,7 +115,7 @@ export const createTask = mutation({
       title,
       description: args.description?.trim() ?? '',
       status,
-      priority: args.priority ?? 'medium',
+      priority: args.priority ?? DEFAULT_TASK_PRIORITY,
       assigneeId,
       dueDate: args.dueDate ?? null,
       tags: normalizeTags(args.tags ?? []),
@@ -160,7 +161,7 @@ export const quickAddTask = mutation({
       title,
       description: '',
       status: args.status,
-      priority: 'medium',
+      priority: DEFAULT_TASK_PRIORITY,
       assigneeId: userId,
       dueDate: null,
       tags: [],

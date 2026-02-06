@@ -12,6 +12,14 @@ interface LaneEditorProps {
 
 const coreLaneIds = new Set(Object.keys(CORE_LANE_LABELS))
 
+function normalizeLaneName(name: string) {
+  return name.trim().replace(/\s+/g, ' ')
+}
+
+function normalizeLaneNameForComparison(name: string) {
+  return normalizeLaneName(name).toLowerCase()
+}
+
 function toLaneIdFromName(name: string) {
   return name
     .trim()
@@ -38,12 +46,22 @@ export function LaneEditor({ lanes, onChange, laneCounts, disabled }: LaneEditor
   const [error, setError] = useState<string | null>(null)
 
   const laneNameSet = useMemo(
-    () => new Set(lanes.map((lane) => lane.name.trim().toLowerCase()).filter(Boolean)),
+    () => new Set(lanes.map((lane) => normalizeLaneNameForComparison(lane.name)).filter(Boolean)),
     [lanes],
   )
 
   const updateLaneName = (laneId: string, name: string) => {
-    const normalizedName = name.replace(/\s+/g, ' ')
+    const normalizedName = normalizeLaneName(name)
+    const normalizedNameLower = normalizedName.toLowerCase()
+    const isDuplicateName = lanes.some(
+      (lane) => lane.id !== laneId && normalizeLaneNameForComparison(lane.name) === normalizedNameLower,
+    )
+
+    if (normalizedName && isDuplicateName) {
+      setError('Lane name must be unique.')
+      return
+    }
+
     setError(null)
     onChange(
       lanes.map((lane) => (lane.id === laneId ? { ...lane, name: normalizedName } : lane)),
@@ -71,7 +89,7 @@ export function LaneEditor({ lanes, onChange, laneCounts, disabled }: LaneEditor
   }
 
   const addLane = () => {
-    const trimmedName = newLaneName.trim().replace(/\s+/g, ' ')
+    const trimmedName = normalizeLaneName(newLaneName)
     if (!trimmedName) {
       setError('Lane name is required.')
       return
@@ -170,4 +188,3 @@ export function LaneEditor({ lanes, onChange, laneCounts, disabled }: LaneEditor
     </div>
   )
 }
-

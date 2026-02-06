@@ -1,9 +1,14 @@
 import { mutation } from './_generated/server'
-import type { Doc, Id } from './_generated/dataModel'
+import type { Id } from './_generated/dataModel'
 import type { MutationCtx, QueryCtx } from './_generated/server'
 import { v } from 'convex/values'
 import { normalizeEmail, requireUserId } from './lib/authHelpers'
 import { projectRoleValidator } from './lib/validators'
+import {
+  ADMIN_PROJECT_ROLE,
+  OWNER_PROJECT_ROLE,
+  canManageProject,
+} from '../shared/domain'
 
 type DbContext = Pick<QueryCtx, 'db'> | Pick<MutationCtx, 'db'>
 type AuthDbContext = Pick<QueryCtx, 'db' | 'auth'> | Pick<MutationCtx, 'db' | 'auth'>
@@ -17,7 +22,7 @@ async function getMembership(ctx: DbContext, projectId: Id<'projects'>, userId: 
 
 async function requireManager(ctx: AuthDbContext, projectId: Id<'projects'>, userId: Id<'users'>) {
   const membership = await getMembership(ctx, projectId, userId)
-  if (!membership || (membership.role !== 'owner' && membership.role !== 'admin')) {
+  if (!membership || !canManageProject(membership.role)) {
     throw new Error('Only project owners or admins can manage members.')
   }
   return membership
@@ -26,7 +31,7 @@ async function requireManager(ctx: AuthDbContext, projectId: Id<'projects'>, use
 async function countOwners(ctx: DbContext, projectId: Id<'projects'>): Promise<number> {
   const ownerRows = await ctx.db
     .query('projectMembers')
-    .withIndex('by_project_role', (q) => q.eq('projectId', projectId).eq('role', 'owner'))
+    .withIndex('by_project_role', (q) => q.eq('projectId', projectId).eq('role', OWNER_PROJECT_ROLE))
     .collect()
   return ownerRows.length
 }
@@ -36,10 +41,6 @@ async function resolveProfileByEmail(ctx: DbContext, email: string) {
     .query('profiles')
     .withIndex('by_emailLower', (q) => q.eq('emailLower', normalizeEmail(email)))
     .unique()
-}
-
-function canManageMembers(role: Doc<'projectMembers'>['role']) {
-  return role === 'owner' || role === 'admin'
 }
 
 export const inviteMember = mutation({
@@ -52,7 +53,7 @@ export const inviteMember = mutation({
     const requesterId = await requireUserId(ctx)
     const requesterMembership = await requireManager(ctx, args.projectId, requesterId)
 
-    if (requesterMembership.role === 'admin' && args.role === 'owner') {
+    if (requesterMembership.role === ADMIN_PROJECT_ROLE && args.role === OWNER_PROJECT_ROLE) {
       throw new Error('Admins cannot invite owners.')
     }
 
@@ -94,20 +95,20 @@ export const updateMemberRole = mutation({
       throw new Error('Target member does not exist.')
     }
 
-    if (!canManageMembers(requesterMembership.role)) {
+    if (!canManageProject(requesterMembership.role)) {
       throw new Error('Only project owners or admins can update member roles.')
     }
 
-    if (requesterMembership.role === 'admin') {
-      if (targetMembership.role === 'owner') {
+    if (requesterMembership.role === ADMIN_PROJECT_ROLE) {
+      if (targetMembership.role === OWNER_PROJECT_ROLE) {
         throw new Error('Admins cannot modify owners.')
       }
-      if (args.role === 'owner') {
+      if (args.role === OWNER_PROJECT_ROLE) {
         throw new Error('Admins cannot promote members to owner.')
       }
     }
 
-    if (targetMembership.role === 'owner' && args.role !== 'owner') {
+    if (targetMembership.role === OWNER_PROJECT_ROLE && args.role !== OWNER_PROJECT_ROLE) {
       const ownerCount = await countOwners(ctx, args.projectId)
       if (ownerCount <= 1) {
         throw new Error('The last owner cannot be demoted.')
@@ -136,11 +137,11 @@ export const removeMember = mutation({
       throw new Error('Target member does not exist.')
     }
 
-    if (requesterMembership.role === 'admin' && targetMembership.role === 'owner') {
+    if (requesterMembership.role === ADMIN_PROJECT_ROLE && targetMembership.role === OWNER_PROJECT_ROLE) {
       throw new Error('Admins cannot remove owners.')
     }
 
-    if (targetMembership.role === 'owner') {
+    if (targetMembership.role === OWNER_PROJECT_ROLE) {
       const ownerCount = await countOwners(ctx, args.projectId)
       if (ownerCount <= 1) {
         throw new Error('The last owner cannot be removed.')

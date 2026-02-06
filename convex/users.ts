@@ -1,6 +1,7 @@
 import { mutation, query } from './_generated/server'
 import { v } from 'convex/values'
 import { buildAvatarUrl, escapePrefixForRange, normalizeEmail, requireUserId } from './lib/authHelpers'
+import { canManageProject } from '../shared/domain'
 
 export const ensureCurrentProfile = mutation({
   args: {
@@ -62,7 +63,7 @@ export const searchByEmail = query({
       .withIndex('by_project_user', (q) => q.eq('projectId', args.projectId).eq('userId', userId))
       .unique()
 
-    if (!requesterMembership || (requesterMembership.role !== 'owner' && requesterMembership.role !== 'admin')) {
+    if (!requesterMembership || !canManageProject(requesterMembership.role)) {
       throw new Error('Only project owners or admins can invite members.')
     }
 

@@ -11,7 +11,7 @@ import { ProjectMembersModal } from '../components/members/ProjectMembersModal'
 import { TaskModal } from '../components/tasks/TaskModal'
 import { Button } from '../components/ui/Button'
 import { useBoardTaskModal } from '../hooks/useBoardTaskModal'
-import type { TaskStatus } from '../types/domain'
+import { DEFAULT_PROJECT_ROLE, type TaskStatus } from '../types/domain'
 
 export function BoardPage() {
   const navigate = useNavigate()
@@ -167,7 +167,7 @@ export function BoardPage() {
         isOpen={isMembersModalOpen}
         projectId={projectId}
         members={members}
-        viewerRole={board?.viewerRole ?? 'member'}
+        viewerRole={board?.viewerRole ?? DEFAULT_PROJECT_ROLE}
         canManageMembers={board?.canManageMembers ?? false}
         onClose={() => setIsMembersModalOpen(false)}
       />
