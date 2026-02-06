@@ -1,0 +1,72 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap');
+@import 'tailwindcss';
+
+:root {
+  --font-display: 'Fraunces', serif;
+  --font-body: 'IBM Plex Sans', sans-serif;
+
+  --color-bg: #f7f4ed;
+  --color-surface: #fffcf7;
+  --color-ink: #1f2a2e;
+  --color-subtle: #55656c;
+  --color-muted: #e8ebe5;
+  --color-border: #d8dfdb;
+  --color-accent: #147b78;
+  --color-accent-soft: #1a9d95;
+  --color-accent-strong: #0f5f5d;
+  --color-accent-faint: #d7f0ec;
+  --color-coral: #d66c4f;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-body);
+  color: var(--color-ink);
+  background-color: var(--color-bg);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+.font-display {
+  font-family: var(--font-display);
+}
+
+@keyframes columnIn {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.99);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-column-in {
+  animation: columnIn 480ms cubic-bezier(0.2, 0.9, 0.2, 1) both;
+}
+
+@keyframes modalIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-modal-in {
+  animation: modalIn 220ms ease-out both;
+}
+
+#root {
+  min-height: 100vh;
+}
