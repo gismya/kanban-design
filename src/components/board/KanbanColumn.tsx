@@ -1,6 +1,7 @@
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { useDroppable } from '@dnd-kit/core'
 import { clsx } from 'clsx'
+import { useMemo } from 'react'
 import type { Task, TaskStatus, User } from '../../types/domain'
 import { getColumnId } from './boardDnd'
 import { QuickAddTask } from './QuickAddTask'
@@ -23,6 +24,7 @@ export function KanbanColumn({ status, title, tasks, members, onTaskClick, onQui
       status,
     },
   })
+  const membersById = useMemo(() => new Map(members.map((member) => [member.userId, member])), [members])
 
   return (
     <section
@@ -47,7 +49,7 @@ export function KanbanColumn({ status, title, tasks, members, onTaskClick, onQui
               <TaskCard
                 key={task.id}
                 task={task}
-                assignee={members.find((member) => member.userId === task.assigneeId)}
+                assignee={task.assigneeId ? membersById.get(task.assigneeId) : undefined}
                 onClick={onTaskClick}
               />
             ))
