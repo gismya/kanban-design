@@ -6,6 +6,7 @@ import type { Id } from '../../convex/_generated/dataModel'
 import { api } from '../../convex/_generated/api'
 import { AppShell } from '../components/layout/AppShell'
 import { LaneEditor } from '../components/projects/LaneEditor'
+import { RemovedLaneMappingModal } from '../components/projects/RemovedLaneMappingModal'
 import { Button } from '../components/ui/Button'
 import type { ProjectLane } from '../types/domain'
 
@@ -164,84 +165,35 @@ export function ProjectSettingsPage() {
         </section>
       ) : null}
 
-      {mappingState ? (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/35 p-4 backdrop-blur-sm"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Map removed lanes"
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget && !isSaving) {
-              setMappingState(null)
-            }
-          }}
-        >
-          <div className="w-full max-w-xl rounded-3xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 shadow-[0_20px_45px_rgba(15,23,42,0.22)] md:p-6">
-            <h2 className="font-display text-2xl">Map Removed Lanes</h2>
-            <p className="mt-2 text-sm text-[var(--color-subtle)]">
-              Each removed lane still has tasks. Choose where those tasks should move.
-            </p>
-
-            <div className="mt-4 space-y-3">
-              {mappingState.removedLanes.map((lane) => (
-                <div key={lane.id} className="rounded-xl border border-[var(--color-border)] bg-white p-3">
-                  <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.08em] text-[var(--color-subtle)]">
-                    {lane.name}
-                  </label>
-                  <select
-                    className="min-h-11 w-full rounded-xl border border-[var(--color-border)] bg-white px-3 text-sm"
-                    value={mappingState.mappings[lane.id] ?? ''}
-                    onChange={(event) =>
-                      setMappingState((prev) =>
-                        prev
-                          ? {
-                              ...prev,
-                              mappings: {
-                                ...prev.mappings,
-                                [lane.id]: event.target.value,
-                              },
-                            }
-                          : prev,
-                      )
-                    }
-                  >
-                    <option value="" disabled>
-                      Select destination lane
-                    </option>
-                    {remainingLaneOptions.map((option) => (
-                      <option key={option.id} value={option.id}>
-                        {option.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-5 flex justify-end gap-2">
-              <Button variant="secondary" onClick={() => setMappingState(null)} disabled={isSaving}>
-                Cancel
-              </Button>
-              <Button
-                onClick={() =>
-                  void submitLaneUpdate(
-                    Object.entries(mappingState.mappings).map(([fromLaneId, toLaneId]) => ({
-                      fromLaneId,
-                      toLaneId,
-                    })),
-                  )
+      <RemovedLaneMappingModal
+        isOpen={Boolean(mappingState)}
+        removedLanes={mappingState?.removedLanes ?? []}
+        mappings={mappingState?.mappings ?? {}}
+        laneOptions={remainingLaneOptions}
+        isSaving={isSaving}
+        onClose={() => setMappingState(null)}
+        onMappingChange={(fromLaneId, toLaneId) =>
+          setMappingState((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  mappings: {
+                    ...prev.mappings,
+                    [fromLaneId]: toLaneId,
+                  },
                 }
-                disabled={
-                  isSaving ||
-                  mappingState.removedLanes.some((lane) => !mappingState.mappings[lane.id])
-                }
-              >
-                {isSaving ? 'Saving...' : 'Save and Move Tasks'}
-              </Button>
-            </div>
-          </div>
-        </div>
-      ) : null}
+              : prev,
+          )
+        }
+        onSubmit={() =>
+          void submitLaneUpdate(
+            Object.entries(mappingState?.mappings ?? {}).map(([fromLaneId, toLaneId]) => ({
+              fromLaneId,
+              toLaneId,
+            })),
+          )
+        }
+      />
     </AppShell>
   )
 }

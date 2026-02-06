@@ -1,62 +1,17 @@
-import {
-  DndContext,
-  DragOverlay,
-  KeyboardSensor,
-  PointerSensor,
-  closestCorners,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-  type DragStartEvent,
-} from '@dnd-kit/core'
-import { sortableKeyboardCoordinates } from '@dnd-kit/sortable'
 import { useCallback, useMemo, useState } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery } from 'convex/react'
 import { useAuthActions } from '@convex-dev/auth/react'
 import type { Id } from '../../convex/_generated/dataModel'
 import { api } from '../../convex/_generated/api'
-import { KanbanColumn } from '../components/board/KanbanColumn'
-import { TaskCardPreview } from '../components/board/TaskCard'
-import { resolveMoveInstruction } from '../components/board/boardDnd'
+import { BoardColumns } from '../components/board/BoardColumns'
+import { BoardStats } from '../components/board/BoardStats'
 import { AppShell } from '../components/layout/AppShell'
 import { ProjectMembersModal } from '../components/members/ProjectMembersModal'
 import { TaskModal } from '../components/tasks/TaskModal'
 import { Button } from '../components/ui/Button'
+import { useBoardTaskModal } from '../hooks/useBoardTaskModal'
 import type { TaskStatus } from '../types/domain'
-
-type TaskModalState =
-  | {
-      isOpen: false
-      mode: 'create' | 'edit'
-      taskId: null
-      defaultStatus: TaskStatus
-    }
-  | {
-      isOpen: true
-      mode: 'create' | 'edit'
-      taskId: string | null
-      defaultStatus: TaskStatus
-    }
-
-const DEFAULT_MODAL_STATE: TaskModalState = {
-  isOpen: false,
-  mode: 'create',
-  taskId: null,
-  defaultStatus: 'todo',
-}
-
-function getDefaultCreateStatus(laneIds: string[]) {
-  if (laneIds.includes('todo')) {
-    return 'todo'
-  }
-
-  if (laneIds.includes('backlog')) {
-    return 'backlog'
-  }
-
-  return laneIds[0] ?? 'backlog'
-}
 
 export function BoardPage() {
   const navigate = useNavigate()
@@ -68,8 +23,6 @@ export function BoardPage() {
   const moveTaskMutation = useMutation(api.tasks.moveTask)
   const quickAddTaskMutation = useMutation(api.tasks.quickAddTask)
 
-  const [activeTaskId, setActiveTaskId] = useState<string | null>(null)
-  const [taskModal, setTaskModal] = useState<TaskModalState>(DEFAULT_MODAL_STATE)
   const [isMembersModalOpen, setIsMembersModalOpen] = useState(false)
 
   const board = useQuery(
@@ -77,26 +30,15 @@ export function BoardPage() {
     projectId ? { projectId: projectId as Id<'projects'> } : 'skip',
   )
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 6,
-      },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    }),
-  )
-
   const project = board?.project
   const boardTasks = useMemo(() => board?.tasks ?? [], [board?.tasks])
   const members = useMemo(() => board?.members ?? [], [board?.members])
   const laneIds = useMemo(() => (project?.lanes ?? []).map((lane) => lane.id), [project?.lanes])
 
-  const selectedTask =
-    taskModal.isOpen && taskModal.taskId
-      ? boardTasks.find((task) => task.id === taskModal.taskId)
-      : undefined
+  const { taskModal, selectedTask, openCreateModal, openEditModal, closeTaskModal } = useBoardTaskModal(
+    laneIds,
+    boardTasks,
+  )
 
   const taskColumns = useMemo(
     () =>
@@ -108,57 +50,31 @@ export function BoardPage() {
     [boardTasks, project?.lanes],
   )
 
-  const onDragStart = useCallback((event: DragStartEvent) => {
-    setActiveTaskId(String(event.active.id))
-  }, [])
-
-  const onDragCancel = useCallback(() => {
-    setActiveTaskId(null)
-  }, [])
-
-  const onDragEnd = useCallback(
-    async (event: DragEndEvent) => {
-      const activeId = String(event.active.id)
-      const overId = event.over ? String(event.over.id) : null
-      setActiveTaskId(null)
-
-      if (!overId || activeId === overId) {
-        return
-      }
-
-      const moveInstruction = resolveMoveInstruction(boardTasks, activeId, overId, laneIds)
-      if (!moveInstruction) {
-        return
-      }
-
+  const onMoveTask = useCallback(
+    async (taskId: string, status: TaskStatus, index: number) => {
       await moveTaskMutation({
-        taskId: activeId as Id<'tasks'>,
-        status: moveInstruction.status,
-        index: moveInstruction.index,
+        taskId: taskId as Id<'tasks'>,
+        status,
+        index,
       })
     },
-    [boardTasks, laneIds, moveTaskMutation],
+    [moveTaskMutation],
   )
 
-  const activeTask = useMemo(
-    () => (activeTaskId ? boardTasks.find((task) => task.id === activeTaskId) : undefined),
-    [activeTaskId, boardTasks],
-  )
+  const onQuickAddTask = useCallback(
+    async (status: TaskStatus, title: string) => {
+      if (!projectId) {
+        return
+      }
 
-  const activeTaskAssignee = useMemo(
-    () => members.find((member) => member.userId === activeTask?.assigneeId),
-    [activeTask?.assigneeId, members],
+      await quickAddTaskMutation({
+        projectId: projectId as Id<'projects'>,
+        status,
+        title,
+      })
+    },
+    [projectId, quickAddTaskMutation],
   )
-
-  const openCreateModal = () => {
-    const defaultStatus = getDefaultCreateStatus(laneIds)
-    setTaskModal({
-      isOpen: true,
-      mode: 'create',
-      taskId: null,
-      defaultStatus,
-    })
-  }
 
   const totalOpen = project?.openTaskCount ?? 0
 
@@ -173,84 +89,41 @@ export function BoardPage() {
       boardProjectId={projectId}
       onLogout={signOut}
       actions={
-        <div className="flex items-center gap-2">
-          {board?.canManageLanes ? (
-            <Button
-              variant="secondary"
-              onClick={() => navigate(`/projects/${projectId}/settings`)}
-            >
-              Lanes
+        project ? (
+          <div className="flex items-center gap-2">
+            {board?.canManageLanes ? (
+              <Button variant="secondary" onClick={() => navigate(`/projects/${projectId}/settings`)}>
+                Lanes
+              </Button>
+            ) : null}
+            <Button variant="secondary" onClick={() => setIsMembersModalOpen(true)}>
+              Members
             </Button>
-          ) : null}
-          <Button variant="secondary" onClick={() => setIsMembersModalOpen(true)}>
-            Members
-          </Button>
-          <Button onClick={openCreateModal}>New Task</Button>
-        </div>
+            <Button onClick={openCreateModal}>New Task</Button>
+          </div>
+        ) : null
       }
     >
       <div className="flex min-h-0 flex-1 flex-col">
-        <section className="mb-5 shrink-0 flex flex-wrap items-center gap-2">
-          <span className="rounded-full border border-[var(--color-border)] bg-white/80 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-[var(--color-subtle)]">
-            Open tasks: {totalOpen}
-          </span>
-          <span className="rounded-full border border-[var(--color-border)] bg-white/80 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-[var(--color-subtle)]">
-            Members: {members.length}
-          </span>
-        </section>
+        <BoardStats openTaskCount={totalOpen} memberCount={members.length} />
 
         {board === undefined ? (
           <p className="rounded-2xl border border-[var(--color-border)] bg-white/70 px-4 py-6 text-sm text-[var(--color-subtle)]">
             Loading board...
           </p>
-        ) : (
+        ) : null}
+
+        {board !== undefined && project ? (
           <div className="flex min-h-0 flex-1 flex-col">
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCorners}
-              onDragStart={onDragStart}
-              onDragCancel={onDragCancel}
-              onDragEnd={(event) => void onDragEnd(event)}
-            >
-              <div className="min-h-0 flex-1 overflow-x-auto pb-2">
-                <div className="flex h-full min-h-0 gap-4">
-                  {taskColumns.map((column, index) => (
-                    <div
-                      key={column.status}
-                      className="animate-column-in flex min-h-0 min-w-0 flex-1"
-                      style={{ animationDelay: `${index * 90}ms` }}
-                    >
-                      <KanbanColumn
-                        status={column.status}
-                        title={column.label}
-                        tasks={column.tasks}
-                        members={members}
-                        onTaskClick={(taskId) =>
-                          setTaskModal({
-                            isOpen: true,
-                            mode: 'edit',
-                            taskId,
-                            defaultStatus: 'todo',
-                          })
-                        }
-                        onQuickAdd={(status, title) =>
-                          quickAddTaskMutation({
-                            projectId: projectId as Id<'projects'>,
-                            status,
-                            title,
-                          }).then(() => undefined)
-                        }
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <DragOverlay dropAnimation={null}>
-                {activeTask ? <TaskCardPreview task={activeTask} assignee={activeTaskAssignee} /> : null}
-              </DragOverlay>
-            </DndContext>
+            <BoardColumns
+              columns={taskColumns}
+              members={members}
+              onTaskClick={openEditModal}
+              onQuickAdd={onQuickAddTask}
+              onMoveTask={onMoveTask}
+            />
           </div>
-        )}
+        ) : null}
       </div>
 
       <TaskModal
@@ -261,7 +134,7 @@ export function BoardPage() {
         lanes={project?.lanes ?? []}
         members={members}
         task={selectedTask}
-        onClose={() => setTaskModal(DEFAULT_MODAL_STATE)}
+        onClose={closeTaskModal}
         onCreate={async (input) => {
           await createTaskMutation({
             projectId: input.projectId as Id<'projects'>,
