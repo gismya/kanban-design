@@ -9,9 +9,9 @@ export function getColumnId(status: TaskStatus): string {
   return `column-${status}`
 }
 
-function parseColumnId(columnId: string): TaskStatus | null {
+function parseColumnId(columnId: string, allowedLaneIds: Set<string>): TaskStatus | null {
   const status = columnId.replace('column-', '') as TaskStatus
-  if (!status || !columnId.startsWith('column-')) {
+  if (!status || !columnId.startsWith('column-') || !allowedLaneIds.has(status)) {
     return null
   }
 
@@ -22,13 +22,14 @@ export function resolveMoveInstruction(
   tasks: Task[],
   activeTaskId: string,
   overId: string,
+  allowedLaneIds: string[],
 ): MoveInstruction | null {
   const activeTask = tasks.find((task) => task.id === activeTaskId)
   if (!activeTask) {
     return null
   }
 
-  const maybeColumnStatus = parseColumnId(overId)
+  const maybeColumnStatus = parseColumnId(overId, new Set(allowedLaneIds))
   if (maybeColumnStatus) {
     const destinationLength = tasks.filter((task) => task.status === maybeColumnStatus).length
     return {

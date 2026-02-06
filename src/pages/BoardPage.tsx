@@ -23,7 +23,7 @@ import { AppShell } from '../components/layout/AppShell'
 import { ProjectMembersModal } from '../components/members/ProjectMembersModal'
 import { TaskModal } from '../components/tasks/TaskModal'
 import { Button } from '../components/ui/Button'
-import { TASK_STATUSES, TASK_STATUS_LABELS, type TaskStatus } from '../types/domain'
+import type { TaskStatus } from '../types/domain'
 
 type TaskModalState =
   | {
@@ -44,6 +44,18 @@ const DEFAULT_MODAL_STATE: TaskModalState = {
   mode: 'create',
   taskId: null,
   defaultStatus: 'todo',
+}
+
+function getDefaultCreateStatus(laneIds: string[]) {
+  if (laneIds.includes('todo')) {
+    return 'todo'
+  }
+
+  if (laneIds.includes('backlog')) {
+    return 'backlog'
+  }
+
+  return laneIds[0] ?? 'backlog'
 }
 
 export function BoardPage() {
@@ -79,6 +91,7 @@ export function BoardPage() {
   const project = board?.project
   const boardTasks = useMemo(() => board?.tasks ?? [], [board?.tasks])
   const members = useMemo(() => board?.members ?? [], [board?.members])
+  const laneIds = useMemo(() => (project?.lanes ?? []).map((lane) => lane.id), [project?.lanes])
 
   const selectedTask =
     taskModal.isOpen && taskModal.taskId
@@ -87,12 +100,12 @@ export function BoardPage() {
 
   const taskColumns = useMemo(
     () =>
-      TASK_STATUSES.map((status) => ({
-        status,
-        label: TASK_STATUS_LABELS[status],
-        tasks: boardTasks.filter((task) => task.status === status),
+      (project?.lanes ?? []).map((lane) => ({
+        status: lane.id,
+        label: lane.name,
+        tasks: boardTasks.filter((task) => task.status === lane.id),
       })),
-    [boardTasks],
+    [boardTasks, project?.lanes],
   )
 
   const onDragStart = useCallback((event: DragStartEvent) => {
@@ -113,7 +126,7 @@ export function BoardPage() {
         return
       }
 
-      const moveInstruction = resolveMoveInstruction(boardTasks, activeId, overId)
+      const moveInstruction = resolveMoveInstruction(boardTasks, activeId, overId, laneIds)
       if (!moveInstruction) {
         return
       }
@@ -124,7 +137,7 @@ export function BoardPage() {
         index: moveInstruction.index,
       })
     },
-    [boardTasks, moveTaskMutation],
+    [boardTasks, laneIds, moveTaskMutation],
   )
 
   const activeTask = useMemo(
@@ -138,16 +151,16 @@ export function BoardPage() {
   )
 
   const openCreateModal = () => {
+    const defaultStatus = getDefaultCreateStatus(laneIds)
     setTaskModal({
       isOpen: true,
       mode: 'create',
       taskId: null,
-      defaultStatus: 'todo',
+      defaultStatus,
     })
   }
 
-  const totalOpen =
-    (project?.taskCounts.todo ?? 0) + (project?.taskCounts.in_progress ?? 0) + (project?.taskCounts.review ?? 0)
+  const totalOpen = project?.openTaskCount ?? 0
 
   if (!projectId) {
     return <Navigate to="/projects" replace />
@@ -161,6 +174,14 @@ export function BoardPage() {
       onLogout={signOut}
       actions={
         <div className="flex items-center gap-2">
+          {board?.canManageLanes ? (
+            <Button
+              variant="secondary"
+              onClick={() => navigate(`/projects/${projectId}/settings`)}
+            >
+              Lanes
+            </Button>
+          ) : null}
           <Button variant="secondary" onClick={() => setIsMembersModalOpen(true)}>
             Members
           </Button>
@@ -168,71 +189,76 @@ export function BoardPage() {
         </div>
       }
     >
-      <section className="mb-5 flex flex-wrap items-center gap-2">
-        <span className="rounded-full border border-[var(--color-border)] bg-white/80 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-[var(--color-subtle)]">
-          Open tasks: {totalOpen}
-        </span>
-        <span className="rounded-full border border-[var(--color-border)] bg-white/80 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-[var(--color-subtle)]">
-          Members: {members.length}
-        </span>
-      </section>
+      <div className="flex min-h-0 flex-1 flex-col">
+        <section className="mb-5 shrink-0 flex flex-wrap items-center gap-2">
+          <span className="rounded-full border border-[var(--color-border)] bg-white/80 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-[var(--color-subtle)]">
+            Open tasks: {totalOpen}
+          </span>
+          <span className="rounded-full border border-[var(--color-border)] bg-white/80 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-[var(--color-subtle)]">
+            Members: {members.length}
+          </span>
+        </section>
 
-      {board === undefined ? (
-        <p className="rounded-2xl border border-[var(--color-border)] bg-white/70 px-4 py-6 text-sm text-[var(--color-subtle)]">
-          Loading board...
-        </p>
-      ) : (
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCorners}
-          onDragStart={onDragStart}
-          onDragCancel={onDragCancel}
-          onDragEnd={(event) => void onDragEnd(event)}
-        >
-          <div className="overflow-x-auto pb-2">
-            <div className="flex min-w-max gap-4">
-              {taskColumns.map((column, index) => (
-                <div
-                  key={column.status}
-                  className="animate-column-in shrink-0"
-                  style={{ animationDelay: `${index * 90}ms` }}
-                >
-                  <KanbanColumn
-                    status={column.status}
-                    title={column.label}
-                    tasks={column.tasks}
-                    members={members}
-                    onTaskClick={(taskId) =>
-                      setTaskModal({
-                        isOpen: true,
-                        mode: 'edit',
-                        taskId,
-                        defaultStatus: 'todo',
-                      })
-                    }
-                    onQuickAdd={(status, title) =>
-                      quickAddTaskMutation({
-                        projectId: projectId as Id<'projects'>,
-                        status,
-                        title,
-                      }).then(() => undefined)
-                    }
-                  />
+        {board === undefined ? (
+          <p className="rounded-2xl border border-[var(--color-border)] bg-white/70 px-4 py-6 text-sm text-[var(--color-subtle)]">
+            Loading board...
+          </p>
+        ) : (
+          <div className="flex min-h-0 flex-1 flex-col">
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCorners}
+              onDragStart={onDragStart}
+              onDragCancel={onDragCancel}
+              onDragEnd={(event) => void onDragEnd(event)}
+            >
+              <div className="min-h-0 flex-1 overflow-x-auto pb-2">
+                <div className="flex h-full min-h-0 gap-4">
+                  {taskColumns.map((column, index) => (
+                    <div
+                      key={column.status}
+                      className="animate-column-in flex min-h-0 min-w-0 flex-1"
+                      style={{ animationDelay: `${index * 90}ms` }}
+                    >
+                      <KanbanColumn
+                        status={column.status}
+                        title={column.label}
+                        tasks={column.tasks}
+                        members={members}
+                        onTaskClick={(taskId) =>
+                          setTaskModal({
+                            isOpen: true,
+                            mode: 'edit',
+                            taskId,
+                            defaultStatus: 'todo',
+                          })
+                        }
+                        onQuickAdd={(status, title) =>
+                          quickAddTaskMutation({
+                            projectId: projectId as Id<'projects'>,
+                            status,
+                            title,
+                          }).then(() => undefined)
+                        }
+                      />
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              </div>
+              <DragOverlay dropAnimation={null}>
+                {activeTask ? <TaskCardPreview task={activeTask} assignee={activeTaskAssignee} /> : null}
+              </DragOverlay>
+            </DndContext>
           </div>
-          <DragOverlay dropAnimation={null}>
-            {activeTask ? <TaskCardPreview task={activeTask} assignee={activeTaskAssignee} /> : null}
-          </DragOverlay>
-        </DndContext>
-      )}
+        )}
+      </div>
 
       <TaskModal
         isOpen={taskModal.isOpen}
         mode={taskModal.mode}
         projectId={projectId}
         defaultStatus={taskModal.defaultStatus}
+        lanes={project?.lanes ?? []}
         members={members}
         task={selectedTask}
         onClose={() => setTaskModal(DEFAULT_MODAL_STATE)}

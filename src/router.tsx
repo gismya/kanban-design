@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import { useConvexAuth } from 'convex/react'
 import { BoardPage } from './pages/BoardPage'
 import { LoginPage } from './pages/LoginPage'
+import { ProjectSettingsPage } from './pages/ProjectSettingsPage'
 import { ProjectsPage } from './pages/ProjectsPage'
 
 const AUTH_LOADING_TIMEOUT_MS = 6000
@@ -121,6 +122,14 @@ export function AppRoutes() {
         element={
           <PrivateRoute>
             <BoardPage />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/projects/:projectId/settings"
+        element={
+          <PrivateRoute>
+            <ProjectSettingsPage />
           </PrivateRoute>
         }
       />

@@ -18,7 +18,7 @@ function matchesFilter(project: Project, filter: ProjectFilter): boolean {
   }
 
   if (filter === 'active') {
-    return project.taskCounts.todo + project.taskCounts.in_progress + project.taskCounts.review > 0
+    return project.openTaskCount > 0
   }
 
   return project.recentActivity?.toLowerCase().includes('updated') ?? false
@@ -56,6 +56,10 @@ export function ProjectsPage() {
 
   const openProject = (projectId: string) => {
     navigate(`/board/${projectId}`)
+  }
+
+  const openProjectSettings = (projectId: string) => {
+    navigate(`/projects/${projectId}/settings`)
   }
 
   return (
@@ -103,7 +107,12 @@ export function ProjectsPage() {
       {projects !== undefined && projects.length > 0 ? (
         <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {filteredProjects.map((project) => (
-            <ProjectCard key={project.id} project={project} onOpen={openProject} />
+            <ProjectCard
+              key={project.id}
+              project={project}
+              onOpen={openProject}
+              onOpenSettings={openProjectSettings}
+            />
           ))}
         </section>
       ) : null}

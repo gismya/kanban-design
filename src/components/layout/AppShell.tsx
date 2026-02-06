@@ -36,7 +36,7 @@ export function AppShell({ title, subtitle, actions, boardProjectId, onLogout, c
         <div className="absolute right-0 top-0 h-64 w-64 rounded-full bg-[radial-gradient(circle,rgba(14,165,233,0.2),transparent_70%)] blur-3xl" />
       </div>
 
-      <div className="relative mx-auto max-w-[1500px]">
+      <div className="relative mx-auto flex min-h-[calc(100dvh-3rem)] max-w-[1500px] flex-col">
         <header className="mb-6 rounded-3xl border border-white/80 bg-white/80 p-4 shadow-[0_10px_35px_rgba(0,0,0,0.06)] backdrop-blur md:p-5">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
@@ -71,7 +71,7 @@ export function AppShell({ title, subtitle, actions, boardProjectId, onLogout, c
           </div>
         </header>
 
-        <main>{children}</main>
+        <main className="flex min-h-0 flex-1 flex-col">{children}</main>
       </div>
     </div>
   )
