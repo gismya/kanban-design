@@ -28,7 +28,7 @@ export function KanbanColumn({ status, title, tasks, members, onTaskClick, onQui
     <section
       ref={setNodeRef}
       className={clsx(
-        'flex h-[620px] w-[320px] shrink-0 flex-col overflow-hidden rounded-3xl border border-[var(--color-border)] bg-[var(--color-surface)]/95 p-4 shadow-[0_12px_32px_rgba(15,23,42,0.08)] transition',
+        'flex h-full w-full min-h-0 min-w-0 flex-col overflow-hidden rounded-3xl border border-[var(--color-border)] bg-[var(--color-surface)]/95 p-4 shadow-[0_12px_32px_rgba(15,23,42,0.08)] transition',
         isOver && 'border-[var(--color-accent-soft)] bg-white',
       )}
       data-testid={`column-${status}`}
@@ -41,7 +41,7 @@ export function KanbanColumn({ status, title, tasks, members, onTaskClick, onQui
       </header>
 
       <SortableContext items={tasks.map((task) => task.id)} strategy={verticalListSortingStrategy}>
-        <div className="flex flex-1 flex-col gap-3 overflow-y-auto overscroll-contain pr-1">
+        <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-contain pr-1">
           {tasks.length > 0 ? (
             tasks.map((task) => (
               <TaskCard

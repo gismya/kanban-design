@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
-import type { CreateProjectInput } from '../../types/domain'
+import { DEFAULT_PROJECT_LANES, type CreateProjectInput, type ProjectLane } from '../../types/domain'
+import { LaneEditor } from './LaneEditor'
 import { Button } from '../ui/Button'
 import { Input } from '../ui/Input'
 
@@ -15,6 +16,7 @@ export function CreateProjectModal({ isOpen, onClose, onCreate }: CreateProjectM
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [themeColor, setThemeColor] = useState(THEME_COLORS[0])
+  const [lanes, setLanes] = useState<ProjectLane[]>(DEFAULT_PROJECT_LANES.map((lane) => ({ ...lane })))
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -38,10 +40,12 @@ export function CreateProjectModal({ isOpen, onClose, onCreate }: CreateProjectM
         name: normalizedName,
         description,
         themeColor,
+        lanes,
       })
       setName('')
       setDescription('')
       setThemeColor(THEME_COLORS[0])
+      setLanes(DEFAULT_PROJECT_LANES.map((lane) => ({ ...lane })))
       onClose()
     } catch (creationError) {
       setError(creationError instanceof Error ? creationError.message : 'Could not create project.')
@@ -123,6 +127,8 @@ export function CreateProjectModal({ isOpen, onClose, onCreate }: CreateProjectM
               ))}
             </div>
           </div>
+
+          <LaneEditor lanes={lanes} onChange={setLanes} disabled={isSubmitting} />
 
           {error ? (
             <p className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</p>

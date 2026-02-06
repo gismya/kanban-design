@@ -11,6 +11,7 @@
 import type * as auth from "../auth.js";
 import type * as http from "../http.js";
 import type * as lib_authHelpers from "../lib/authHelpers.js";
+import type * as lib_lanes from "../lib/lanes.js";
 import type * as lib_validators from "../lib/validators.js";
 import type * as memberships from "../memberships.js";
 import type * as projects from "../projects.js";
@@ -27,6 +28,7 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   http: typeof http;
   "lib/authHelpers": typeof lib_authHelpers;
+  "lib/lanes": typeof lib_lanes;
   "lib/validators": typeof lib_validators;
   memberships: typeof memberships;
   projects: typeof projects;

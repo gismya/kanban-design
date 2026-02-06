@@ -5,10 +5,12 @@ import { Badge } from '../ui/Badge'
 interface ProjectCardProps {
   project: Project
   onOpen: (projectId: string) => void
+  onOpenSettings?: (projectId: string) => void
 }
 
-export function ProjectCard({ project, onOpen }: ProjectCardProps) {
-  const openCount = project.taskCounts.todo + project.taskCounts.in_progress + project.taskCounts.review
+export function ProjectCard({ project, onOpen, onOpenSettings }: ProjectCardProps) {
+  const openCount = project.openTaskCount
+  const canManageLanes = project.viewerRole === 'owner' || project.viewerRole === 'admin'
 
   return (
     <article className="group relative overflow-hidden rounded-3xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 shadow-[0_8px_26px_rgba(17,24,39,0.08)] transition hover:-translate-y-1 hover:shadow-[0_16px_40px_rgba(17,24,39,0.14)]">
@@ -25,13 +27,20 @@ export function ProjectCard({ project, onOpen }: ProjectCardProps) {
 
         <div className="flex flex-wrap gap-2">
           <Badge tone="accent">Open {openCount}</Badge>
-          <Badge tone="neutral">Done {project.taskCounts.done}</Badge>
+          <Badge tone="neutral">Done {project.doneTaskCount}</Badge>
           {project.recentActivity ? <Badge tone="neutral">{project.recentActivity}</Badge> : null}
         </div>
 
-        <Button className="w-full" onClick={() => onOpen(project.id)}>
-          Open Board
-        </Button>
+        <div className="grid grid-cols-1 gap-2">
+          <Button className="w-full" onClick={() => onOpen(project.id)}>
+            Open Board
+          </Button>
+          {canManageLanes && onOpenSettings ? (
+            <Button className="w-full" variant="secondary" onClick={() => onOpenSettings(project.id)}>
+              Project Settings
+            </Button>
+          ) : null}
+        </div>
       </div>
     </article>
   )

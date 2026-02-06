@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
-  TASK_STATUSES,
-  TASK_STATUS_LABELS,
   type CreateTaskInput,
+  type ProjectLane,
   type Task,
   type TaskPriority,
   type TaskStatus,
@@ -17,6 +16,7 @@ interface TaskModalProps {
   mode: 'create' | 'edit'
   projectId: string
   defaultStatus?: TaskStatus
+  lanes: ProjectLane[]
   members: User[]
   task?: Task
   onClose: () => void
@@ -42,6 +42,7 @@ export function TaskModal({
   mode,
   projectId,
   defaultStatus = 'todo',
+  lanes,
   members,
   task,
   onClose,
@@ -72,7 +73,7 @@ export function TaskModal({
       setState({
         title: task.title,
         description: task.description,
-        status: task.status,
+        status: lanes.some((lane) => lane.id === task.status) ? task.status : defaultStatus,
         priority: task.priority,
         assigneeId: task.assigneeId,
         dueDate: task.dueDate ?? '',
@@ -83,7 +84,7 @@ export function TaskModal({
       setState({
         title: '',
         description: '',
-        status: defaultStatus,
+        status: lanes.some((lane) => lane.id === defaultStatus) ? defaultStatus : lanes[0]?.id ?? 'backlog',
         priority: 'medium',
         assigneeId: currentAssignee,
         dueDate: '',
@@ -93,7 +94,7 @@ export function TaskModal({
     }
 
     setError(null)
-  }, [currentAssignee, defaultStatus, isOpen, mode, task])
+  }, [currentAssignee, defaultStatus, isOpen, lanes, mode, task])
 
   useEffect(() => {
     if (!isOpen) {
@@ -226,9 +227,9 @@ export function TaskModal({
                 setState((prev) => ({ ...prev, status: event.target.value as TaskStatus }))
               }
             >
-              {TASK_STATUSES.map((status) => (
-                <option key={status} value={status}>
-                  {TASK_STATUS_LABELS[status]}
+              {lanes.map((lane) => (
+                <option key={lane.id} value={lane.id}>
+                  {lane.name}
                 </option>
               ))}
             </select>

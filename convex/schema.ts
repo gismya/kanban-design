@@ -1,14 +1,7 @@
 import { authTables } from '@convex-dev/auth/server'
 import { defineSchema, defineTable } from 'convex/server'
 import { v } from 'convex/values'
-
-const taskStatus = v.union(
-  v.literal('backlog'),
-  v.literal('todo'),
-  v.literal('in_progress'),
-  v.literal('review'),
-  v.literal('done'),
-)
+import { projectLaneValidator } from './lib/validators'
 
 const taskPriority = v.union(v.literal('low'), v.literal('medium'), v.literal('high'), v.literal('urgent'))
 
@@ -30,6 +23,7 @@ export default defineSchema({
     name: v.string(),
     description: v.string(),
     themeColor: v.string(),
+    lanes: v.optional(v.array(projectLaneValidator)),
     createdBy: v.id('users'),
     createdAt: v.string(),
     updatedAt: v.string(),
@@ -50,7 +44,7 @@ export default defineSchema({
     projectId: v.id('projects'),
     title: v.string(),
     description: v.string(),
-    status: taskStatus,
+    status: v.string(),
     priority: taskPriority,
     assigneeId: v.id('users'),
     dueDate: v.union(v.string(), v.null()),

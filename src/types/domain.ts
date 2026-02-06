@@ -1,26 +1,27 @@
-export const TASK_STATUSES = ['backlog', 'todo', 'in_progress', 'review', 'done'] as const
-
-export type TaskStatus = (typeof TASK_STATUSES)[number]
-
-export const TASK_STATUS_LABELS: Record<TaskStatus, string> = {
-  backlog: 'Backlog',
-  todo: 'To Do',
-  in_progress: 'In Progress',
-  review: 'Review',
-  done: 'Done',
+export interface ProjectLane {
+  id: string
+  name: string
 }
+
+export const CORE_LANE_LABELS = {
+  backlog: 'Backlog',
+  in_progress: 'In Progress',
+  done: 'Done',
+} as const
+
+export const DEFAULT_PROJECT_LANES: ProjectLane[] = [
+  { id: 'backlog', name: 'Backlog' },
+  { id: 'todo', name: 'To Do' },
+  { id: 'in_progress', name: 'In Progress' },
+  { id: 'review', name: 'Review' },
+  { id: 'done', name: 'Done' },
+]
+
+export type TaskStatus = string
 
 export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent'
 
 export type ProjectRole = 'owner' | 'admin' | 'member'
-
-export interface ProjectTaskCounts {
-  backlog: number
-  todo: number
-  in_progress: number
-  review: number
-  done: number
-}
 
 export interface User {
   userId: string
@@ -35,7 +36,11 @@ export interface Project {
   name: string
   description: string
   themeColor: string
-  taskCounts: ProjectTaskCounts
+  lanes: ProjectLane[]
+  taskCountsByLane: Record<string, number>
+  openTaskCount: number
+  doneTaskCount: number
+  totalTaskCount: number
   viewerRole?: ProjectRole
   updatedAt?: string
   recentActivity?: string
@@ -61,6 +66,7 @@ export interface CreateProjectInput {
   name: string
   description: string
   themeColor: string
+  lanes: ProjectLane[]
 }
 
 export interface CreateTaskInput {

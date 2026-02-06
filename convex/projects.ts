@@ -3,27 +3,8 @@ import type { Doc, Id } from './_generated/dataModel'
 import type { MutationCtx, QueryCtx } from './_generated/server'
 import { v } from 'convex/values'
 import { requireUserId } from './lib/authHelpers'
-import { TASK_STATUSES } from './lib/validators'
-
-function emptyTaskCounts() {
-  return {
-    backlog: 0,
-    todo: 0,
-    in_progress: 0,
-    review: 0,
-    done: 0,
-  }
-}
-
-function computeTaskCounts(tasks: Doc<'tasks'>[]) {
-  return tasks.reduce(
-    (acc, task) => {
-      acc[task.status] += 1
-      return acc
-    },
-    emptyTaskCounts(),
-  )
-}
+import { normalizeLaneDrafts, resolveProjectLanes } from './lib/lanes'
+import { projectLanesValidator } from './lib/validators'
 
 type DbContext = Pick<QueryCtx, 'db'> | Pick<MutationCtx, 'db'>
 
@@ -32,6 +13,10 @@ async function getMembership(ctx: DbContext, projectId: Id<'projects'>, userId: 
     .query('projectMembers')
     .withIndex('by_project_user', (q) => q.eq('projectId', projectId).eq('userId', userId))
     .unique()
+}
+
+function canManageProject(role: Doc<'projectMembers'>['role']) {
+  return role === 'owner' || role === 'admin'
 }
 
 async function resolveMemberProfile(ctx: DbContext, userId: Id<'users'>) {
@@ -46,6 +31,47 @@ async function resolveMemberProfile(ctx: DbContext, userId: Id<'users'>) {
     email: user?.email ?? 'unknown@example.com',
     name: user?.name ?? user?.email?.split('@')[0] ?? 'User',
     avatarUrl: user?.image ?? 'https://ui-avatars.com/api/?name=User&background=0f766e&color=ffffff',
+  }
+}
+
+function computeTaskStats(tasks: Doc<'tasks'>[], lanes: { id: string }[]) {
+  const taskCountsByLane: Record<string, number> = {}
+  for (const lane of lanes) {
+    taskCountsByLane[lane.id] = 0
+  }
+
+  for (const task of tasks) {
+    taskCountsByLane[task.status] = (taskCountsByLane[task.status] ?? 0) + 1
+  }
+
+  const totalTaskCount = tasks.length
+  const doneTaskCount = taskCountsByLane.done ?? 0
+
+  return {
+    taskCountsByLane,
+    totalTaskCount,
+    doneTaskCount,
+    openTaskCount: totalTaskCount - doneTaskCount,
+  }
+}
+
+async function reindexLaneTasks(ctx: MutationCtx, projectId: Id<'projects'>, laneId: string, now: string) {
+  const laneTasks = await ctx.db
+    .query('tasks')
+    .withIndex('by_project_status_order', (q) => q.eq('projectId', projectId).eq('status', laneId))
+    .collect()
+
+  for (let index = 0; index < laneTasks.length; index += 1) {
+    const task = laneTasks[index]
+    const targetSortOrder = (index + 1) * 1000
+    if (task.sortOrder === targetSortOrder) {
+      continue
+    }
+
+    await ctx.db.patch(task._id, {
+      sortOrder: targetSortOrder,
+      updatedAt: now,
+    })
   }
 }
 
@@ -66,17 +92,24 @@ export const listForCurrentUser = query({
           return null
         }
 
+        const lanes = resolveProjectLanes(project.lanes)
         const projectTasks = await ctx.db
           .query('tasks')
           .withIndex('by_project', (q) => q.eq('projectId', project._id))
           .collect()
+
+        const stats = computeTaskStats(projectTasks, lanes)
 
         return {
           id: project._id,
           name: project.name,
           description: project.description,
           themeColor: project.themeColor,
-          taskCounts: computeTaskCounts(projectTasks),
+          lanes,
+          taskCountsByLane: stats.taskCountsByLane,
+          openTaskCount: stats.openTaskCount,
+          doneTaskCount: stats.doneTaskCount,
+          totalTaskCount: stats.totalTaskCount,
           viewerRole: membership.role,
           updatedAt: project.updatedAt,
           recentActivity: undefined,
@@ -95,6 +128,7 @@ export const createProject = mutation({
     name: v.string(),
     description: v.string(),
     themeColor: v.string(),
+    lanes: v.optional(projectLanesValidator),
   },
   handler: async (ctx, args) => {
     const userId = await requireUserId(ctx)
@@ -105,12 +139,14 @@ export const createProject = mutation({
     }
 
     const description = args.description.trim()
+    const lanes = args.lanes ? normalizeLaneDrafts(args.lanes) : resolveProjectLanes(undefined)
     const now = new Date().toISOString()
 
     const projectId = await ctx.db.insert('projects', {
       name,
       description,
       themeColor: args.themeColor,
+      lanes,
       createdBy: userId,
       createdAt: now,
       updatedAt: now,
@@ -145,17 +181,21 @@ export const getBoard = query({
       return null
     }
 
+    const lanes = resolveProjectLanes(project.lanes)
     const tasks = await ctx.db
       .query('tasks')
       .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
       .collect()
 
-    const statusOrder = new Map(TASK_STATUSES.map((status, index) => [status, index]))
+    const laneOrder = new Map(lanes.map((lane, index) => [lane.id, index]))
     const orderedTasks = tasks.sort((a, b) => {
-      const statusDiff = (statusOrder.get(a.status) ?? 0) - (statusOrder.get(b.status) ?? 0)
-      if (statusDiff !== 0) {
-        return statusDiff
+      const aLaneOrder = laneOrder.get(a.status) ?? Number.MAX_SAFE_INTEGER
+      const bLaneOrder = laneOrder.get(b.status) ?? Number.MAX_SAFE_INTEGER
+
+      if (aLaneOrder !== bLaneOrder) {
+        return aLaneOrder - bLaneOrder
       }
+
       return a.sortOrder - b.sortOrder
     })
 
@@ -177,13 +217,20 @@ export const getBoard = query({
       }),
     )
 
+    const stats = computeTaskStats(tasks, lanes)
+    const canManageLanes = canManageProject(membership.role)
+
     return {
       project: {
         id: project._id,
         name: project.name,
         description: project.description,
         themeColor: project.themeColor,
-        taskCounts: computeTaskCounts(tasks),
+        lanes,
+        taskCountsByLane: stats.taskCountsByLane,
+        openTaskCount: stats.openTaskCount,
+        doneTaskCount: stats.doneTaskCount,
+        totalTaskCount: stats.totalTaskCount,
         viewerRole: membership.role,
         updatedAt: project.updatedAt,
       },
@@ -204,7 +251,158 @@ export const getBoard = query({
       })),
       members,
       viewerRole: membership.role,
-      canManageMembers: membership.role === 'owner' || membership.role === 'admin',
+      canManageMembers: canManageLanes,
+      canManageLanes,
     }
+  },
+})
+
+export const getProjectSettings = query({
+  args: {
+    projectId: v.id('projects'),
+  },
+  handler: async (ctx, args) => {
+    const userId = await requireUserId(ctx)
+    const membership = await getMembership(ctx, args.projectId, userId)
+
+    if (!membership) {
+      return null
+    }
+
+    const project = await ctx.db.get(args.projectId)
+    if (!project) {
+      return null
+    }
+
+    const lanes = resolveProjectLanes(project.lanes)
+    const tasks = await ctx.db
+      .query('tasks')
+      .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
+      .collect()
+
+    const stats = computeTaskStats(tasks, lanes)
+    const canManageLanes = canManageProject(membership.role)
+
+    return {
+      project: {
+        id: project._id,
+        name: project.name,
+        description: project.description,
+        themeColor: project.themeColor,
+        lanes,
+        taskCountsByLane: stats.taskCountsByLane,
+        openTaskCount: stats.openTaskCount,
+        doneTaskCount: stats.doneTaskCount,
+        totalTaskCount: stats.totalTaskCount,
+        viewerRole: membership.role,
+        updatedAt: project.updatedAt,
+      },
+      viewerRole: membership.role,
+      canManageLanes,
+    }
+  },
+})
+
+export const updateProjectLanes = mutation({
+  args: {
+    projectId: v.id('projects'),
+    lanes: projectLanesValidator,
+    removedLaneMappings: v.optional(
+      v.array(
+        v.object({
+          fromLaneId: v.string(),
+          toLaneId: v.string(),
+        }),
+      ),
+    ),
+  },
+  handler: async (ctx, args) => {
+    const userId = await requireUserId(ctx)
+    const membership = await getMembership(ctx, args.projectId, userId)
+
+    if (!membership) {
+      throw new Error('You do not have access to this project.')
+    }
+
+    if (!canManageProject(membership.role)) {
+      throw new Error('Only project owners or admins can update lanes.')
+    }
+
+    const project = await ctx.db.get(args.projectId)
+    if (!project) {
+      throw new Error('Project not found.')
+    }
+
+    const currentLanes = resolveProjectLanes(project.lanes)
+    const nextLanes = normalizeLaneDrafts(args.lanes)
+
+    const currentLaneIds = new Set(currentLanes.map((lane) => lane.id))
+    const nextLaneIds = new Set(nextLanes.map((lane) => lane.id))
+    const removedLaneIds = Array.from(currentLaneIds).filter((laneId) => !nextLaneIds.has(laneId))
+    const removedLaneSet = new Set(removedLaneIds)
+
+    const mappingRows = args.removedLaneMappings ?? []
+    const laneMapping = new Map<string, string>()
+    for (const mapping of mappingRows) {
+      if (laneMapping.has(mapping.fromLaneId)) {
+        throw new Error(`Duplicate lane mapping for "${mapping.fromLaneId}".`)
+      }
+      laneMapping.set(mapping.fromLaneId, mapping.toLaneId)
+    }
+
+    const now = new Date().toISOString()
+    const lanesToReindex = new Set<string>()
+
+    for (const removedLaneId of removedLaneIds) {
+      const laneTasks = await ctx.db
+        .query('tasks')
+        .withIndex('by_project_status_order', (q) =>
+          q.eq('projectId', args.projectId).eq('status', removedLaneId),
+        )
+        .collect()
+
+      if (laneTasks.length === 0) {
+        continue
+      }
+
+      const destinationLaneId = laneMapping.get(removedLaneId)
+      if (!destinationLaneId) {
+        throw new Error(`Please choose a destination for lane "${removedLaneId}".`)
+      }
+
+      if (!nextLaneIds.has(destinationLaneId) || removedLaneSet.has(destinationLaneId)) {
+        throw new Error(`Destination lane "${destinationLaneId}" is not valid.`)
+      }
+
+      const destinationTasks = await ctx.db
+        .query('tasks')
+        .withIndex('by_project_status_order', (q) =>
+          q.eq('projectId', args.projectId).eq('status', destinationLaneId),
+        )
+        .collect()
+
+      let nextSortOrder = destinationTasks.reduce((max, task) => Math.max(max, task.sortOrder), 0) + 1000
+      for (const task of laneTasks) {
+        await ctx.db.patch(task._id, {
+          status: destinationLaneId,
+          sortOrder: nextSortOrder,
+          updatedAt: now,
+        })
+        nextSortOrder += 1000
+      }
+
+      lanesToReindex.add(destinationLaneId)
+    }
+
+    for (const laneId of lanesToReindex) {
+      await reindexLaneTasks(ctx, args.projectId, laneId, now)
+    }
+
+    await ctx.db.patch(args.projectId, {
+      lanes: nextLanes,
+      updatedAt: now,
+    })
+
+    return { ok: true }
   },
 })

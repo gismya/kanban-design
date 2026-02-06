@@ -3,7 +3,8 @@ import type { Doc, Id } from './_generated/dataModel'
 import type { MutationCtx, QueryCtx } from './_generated/server'
 import { v } from 'convex/values'
 import { requireUserId } from './lib/authHelpers'
-import { TASK_STATUSES, taskPriorityValidator, taskStatusValidator } from './lib/validators'
+import { getDefaultTaskLaneId, hasLane, resolveProjectLanes } from './lib/lanes'
+import { DEFAULT_PROJECT_LANES, taskPriorityValidator, taskStatusValidator } from './lib/validators'
 
 type DbContext = Pick<QueryCtx, 'db'> | Pick<MutationCtx, 'db'>
 
@@ -20,6 +21,15 @@ async function requireProjectMembership(ctx: DbContext, projectId: Id<'projects'
   return membership
 }
 
+async function requireProject(ctx: DbContext, projectId: Id<'projects'>) {
+  const project = await ctx.db.get(projectId)
+  if (!project) {
+    throw new Error('Project not found.')
+  }
+
+  return project
+}
+
 async function isProjectMember(ctx: DbContext, projectId: Id<'projects'>, userId: Id<'users'>) {
   const membership = await ctx.db
     .query('projectMembers')
@@ -31,6 +41,12 @@ async function isProjectMember(ctx: DbContext, projectId: Id<'projects'>, userId
 
 function normalizeTags(tags: string[]): string[] {
   return tags.map((tag) => tag.trim()).filter(Boolean)
+}
+
+function assertValidLane(lanes: { id: string; name: string }[], laneId: string) {
+  if (!hasLane(lanes, laneId)) {
+    throw new Error('The selected lane is not configured for this project.')
+  }
 }
 
 async function nextSortOrder(ctx: DbContext, projectId: Id<'projects'>, status: Doc<'tasks'>['status']) {
@@ -77,12 +93,17 @@ export const createTask = mutation({
     const userId = await requireUserId(ctx)
     await requireProjectMembership(ctx, args.projectId, userId)
 
+    const project = await requireProject(ctx, args.projectId)
+    const lanes = resolveProjectLanes(project.lanes)
+
     const title = args.title.trim()
     if (!title) {
       throw new Error('Task title is required.')
     }
 
-    const status = args.status ?? 'todo'
+    const status = args.status ?? getDefaultTaskLaneId(lanes)
+    assertValidLane(lanes, status)
+
     const assigneeCandidate = args.assigneeId ?? userId
     const assigneeId =
       (await isProjectMember(ctx, args.projectId, assigneeCandidate)) ? assigneeCandidate : userId
@@ -123,6 +144,10 @@ export const quickAddTask = mutation({
   handler: async (ctx, args) => {
     const userId = await requireUserId(ctx)
     await requireProjectMembership(ctx, args.projectId, userId)
+
+    const project = await requireProject(ctx, args.projectId)
+    const lanes = resolveProjectLanes(project.lanes)
+    assertValidLane(lanes, args.status)
 
     const title = args.title.trim()
     if (!title) {
@@ -176,7 +201,12 @@ export const updateTask = mutation({
 
     await requireProjectMembership(ctx, existing.projectId, userId)
 
+    const project = await requireProject(ctx, existing.projectId)
+    const lanes = resolveProjectLanes(project.lanes)
+
     const nextStatus = args.status ?? existing.status
+    assertValidLane(lanes, nextStatus)
+
     const nextTitle = args.title !== undefined ? args.title.trim() : existing.title
     if (!nextTitle) {
       throw new Error('Task title is required.')
@@ -232,6 +262,10 @@ export const moveTask = mutation({
     }
 
     await requireProjectMembership(ctx, task.projectId, userId)
+
+    const project = await requireProject(ctx, task.projectId)
+    const lanes = resolveProjectLanes(project.lanes)
+    assertValidLane(lanes, args.status)
 
     const sourceStatus = task.status
     const destinationStatus = args.status
@@ -289,6 +323,6 @@ export const moveTask = mutation({
 export const taskStatuses = mutation({
   args: {},
   handler: async () => {
-    return TASK_STATUSES
+    return DEFAULT_PROJECT_LANES.map((lane) => lane.id)
   },
 })
