@@ -12,6 +12,19 @@ const lanes: ProjectLane[] = [
 ]
 
 describe('LaneEditor', () => {
+  it('blocks renaming a lane to an empty name after trimming', () => {
+    const onChange = vi.fn()
+
+    render(<LaneEditor lanes={lanes} onChange={onChange} />)
+
+    fireEvent.change(screen.getByLabelText(/lane name review/i), {
+      target: { value: '    ' },
+    })
+
+    expect(onChange).not.toHaveBeenCalled()
+    expect(screen.getByText('Lane name is required.')).toBeInTheDocument()
+  })
+
   it('blocks renaming a lane to a duplicate name (case and whitespace insensitive)', () => {
     const onChange = vi.fn()
 

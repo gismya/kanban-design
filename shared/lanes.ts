@@ -6,11 +6,11 @@ export interface ProjectLane {
 export const CORE_LANE_IDS = ['backlog', 'in_progress', 'done'] as const
 export type CoreLaneId = (typeof CORE_LANE_IDS)[number]
 
-export const CORE_LANE_LABELS: Record<CoreLaneId, string> = {
+export const CORE_LANE_LABELS = {
   backlog: 'Backlog',
   in_progress: 'In Progress',
   done: 'Done',
-}
+} as const satisfies Record<CoreLaneId, string>
 
 export const DEFAULT_PROJECT_LANES: ProjectLane[] = [
   { id: 'backlog', name: 'Backlog' },
