@@ -53,11 +53,11 @@ export function BoardColumns({
       onDragEnd={(event) => void onDragEnd(event)}
     >
       <div className="min-h-0 flex-1 overflow-x-auto pb-2">
-        <div className="flex h-full min-h-0 gap-4">
+        <div className="flex h-full min-h-0 min-w-full w-max gap-4">
           {columns.map((column, index) => (
             <div
               key={column.status}
-              className="animate-column-in flex min-h-0 min-w-0 flex-1"
+              className="animate-column-in flex min-h-0 min-w-[18rem] flex-1 basis-0"
               style={{ animationDelay: `${index * 90}ms` }}
             >
               <KanbanColumn
