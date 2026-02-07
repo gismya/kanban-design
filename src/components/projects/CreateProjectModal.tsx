@@ -1,5 +1,6 @@
-import { useState, type FormEvent } from 'react'
+import { useMemo, useState, type FormEvent } from 'react'
 import { DEFAULT_PROJECT_LANES, type CreateProjectInput, type ProjectLane } from '../../types/domain'
+import { normalizeLanesForSubmit, validateLaneNames } from '../../lib/laneValidation'
 import { LaneEditor } from './LaneEditor'
 import { Button } from '../ui/Button'
 import { Input } from '../ui/Input'
@@ -19,6 +20,7 @@ export function CreateProjectModal({ isOpen, onClose, onCreate }: CreateProjectM
   const [lanes, setLanes] = useState<ProjectLane[]>(DEFAULT_PROJECT_LANES.map((lane) => ({ ...lane })))
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const laneValidationError = useMemo(() => validateLaneNames(lanes), [lanes])
 
   if (!isOpen) {
     return null
@@ -26,21 +28,24 @@ export function CreateProjectModal({ isOpen, onClose, onCreate }: CreateProjectM
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    setError(null)
 
     const normalizedName = name.trim()
     if (!normalizedName) {
       setError('Project name is required.')
       return
     }
+    if (laneValidationError) {
+      return
+    }
 
+    setError(null)
     setIsSubmitting(true)
     try {
       await onCreate({
         name: normalizedName,
         description,
         themeColor,
-        lanes,
+        lanes: normalizeLanesForSubmit(lanes),
       })
       setName('')
       setDescription('')
@@ -130,15 +135,17 @@ export function CreateProjectModal({ isOpen, onClose, onCreate }: CreateProjectM
 
           <LaneEditor lanes={lanes} onChange={setLanes} disabled={isSubmitting} />
 
-          {error ? (
-            <p className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</p>
+          {laneValidationError || error ? (
+            <p className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+              {laneValidationError ?? error}
+            </p>
           ) : null}
 
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="secondary" onClick={onClose} disabled={isSubmitting}>
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
+            <Button type="submit" disabled={isSubmitting || Boolean(laneValidationError)}>
               {isSubmitting ? 'Creating...' : 'Create Project'}
             </Button>
           </div>

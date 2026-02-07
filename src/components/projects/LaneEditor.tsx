@@ -51,26 +51,8 @@ export function LaneEditor({ lanes, onChange, laneCounts, disabled }: LaneEditor
   )
 
   const updateLaneName = (laneId: string, name: string) => {
-    const normalizedName = normalizeLaneName(name)
-    const normalizedNameLower = normalizedName.toLowerCase()
-    const isDuplicateName = lanes.some(
-      (lane) => lane.id !== laneId && normalizeLaneNameForComparison(lane.name) === normalizedNameLower,
-    )
-
-    if (!normalizedName) {
-      setError('Lane name is required.')
-      return
-    }
-
-    if (normalizedName && isDuplicateName) {
-      setError('Lane name must be unique.')
-      return
-    }
-
     setError(null)
-    onChange(
-      lanes.map((lane) => (lane.id === laneId ? { ...lane, name: normalizedName } : lane)),
-    )
+    onChange(lanes.map((lane) => (lane.id === laneId ? { ...lane, name } : lane)))
   }
 
   const moveLane = (laneId: string, direction: -1 | 1) => {

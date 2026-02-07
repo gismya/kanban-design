@@ -12,7 +12,7 @@ const lanes: ProjectLane[] = [
 ]
 
 describe('LaneEditor', () => {
-  it('blocks renaming a lane to an empty name after trimming', () => {
+  it('allows temporarily empty lane names while editing', () => {
     const onChange = vi.fn()
 
     render(<LaneEditor lanes={lanes} onChange={onChange} />)
@@ -21,11 +21,12 @@ describe('LaneEditor', () => {
       target: { value: '    ' },
     })
 
-    expect(onChange).not.toHaveBeenCalled()
-    expect(screen.getByText('Lane name is required.')).toBeInTheDocument()
+    expect(onChange).toHaveBeenCalledTimes(1)
+    const nextLanes = onChange.mock.calls[0][0] as ProjectLane[]
+    expect(nextLanes.find((lane) => lane.id === 'review')).toEqual({ id: 'review', name: '    ' })
   })
 
-  it('blocks renaming a lane to a duplicate name (case and whitespace insensitive)', () => {
+  it('allows temporarily duplicate lane names while editing', () => {
     const onChange = vi.fn()
 
     render(<LaneEditor lanes={lanes} onChange={onChange} />)
@@ -34,11 +35,12 @@ describe('LaneEditor', () => {
       target: { value: '  to   do  ' },
     })
 
-    expect(onChange).not.toHaveBeenCalled()
-    expect(screen.getByText('Lane name must be unique.')).toBeInTheDocument()
+    expect(onChange).toHaveBeenCalledTimes(1)
+    const nextLanes = onChange.mock.calls[0][0] as ProjectLane[]
+    expect(nextLanes.find((lane) => lane.id === 'review')).toEqual({ id: 'review', name: '  to   do  ' })
   })
 
-  it('normalizes lane rename input by trimming and collapsing whitespace', () => {
+  it('keeps spacing while editing lane names', () => {
     const onChange = vi.fn()
 
     render(<LaneEditor lanes={lanes} onChange={onChange} />)
@@ -50,7 +52,6 @@ describe('LaneEditor', () => {
     expect(onChange).toHaveBeenCalledTimes(1)
 
     const nextLanes = onChange.mock.calls[0][0] as ProjectLane[]
-    expect(nextLanes.find((lane) => lane.id === 'review')).toEqual({ id: 'review', name: 'QA Ready' })
-    expect(screen.queryByText('Lane name must be unique.')).not.toBeInTheDocument()
+    expect(nextLanes.find((lane) => lane.id === 'review')).toEqual({ id: 'review', name: '  QA   Ready  ' })
   })
 })

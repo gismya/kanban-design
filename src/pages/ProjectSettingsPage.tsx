@@ -8,6 +8,7 @@ import { AppShell } from '../components/layout/AppShell'
 import { LaneEditor } from '../components/projects/LaneEditor'
 import { RemovedLaneMappingModal } from '../components/projects/RemovedLaneMappingModal'
 import { Button } from '../components/ui/Button'
+import { normalizeLanesForSubmit, validateLaneNames } from '../lib/laneValidation'
 import type { ProjectLane } from '../types/domain'
 
 interface MappingState {
@@ -52,6 +53,7 @@ export function ProjectSettingsPage() {
     const removedIds = new Set(mappingState.removedLanes.map((lane) => lane.id))
     return draftLanes.filter((lane) => !removedIds.has(lane.id))
   }, [draftLanes, mappingState])
+  const laneValidationError = useMemo(() => validateLaneNames(draftLanes), [draftLanes])
 
   const submitLaneUpdate = async (removedLaneMappings: Array<{ fromLaneId: string; toLaneId: string }>) => {
     if (!projectId) {
@@ -63,7 +65,7 @@ export function ProjectSettingsPage() {
     try {
       await updateProjectLanes({
         projectId: projectId as Id<'projects'>,
-        lanes: draftLanes,
+        lanes: normalizeLanesForSubmit(draftLanes),
         removedLaneMappings,
       })
       setMappingState(null)
@@ -76,6 +78,9 @@ export function ProjectSettingsPage() {
 
   const startSaveFlow = async () => {
     if (!project || !settings?.canManageLanes) {
+      return
+    }
+    if (laneValidationError) {
       return
     }
 
@@ -146,8 +151,10 @@ export function ProjectSettingsPage() {
             </p>
           ) : null}
 
-          {error ? (
-            <p className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</p>
+          {laneValidationError || error ? (
+            <p className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+              {laneValidationError ?? error}
+            </p>
           ) : null}
 
           <div className="flex justify-end gap-2">
@@ -158,7 +165,10 @@ export function ProjectSettingsPage() {
             >
               Reset
             </Button>
-            <Button onClick={() => void startSaveFlow()} disabled={isSaving || !settings.canManageLanes}>
+            <Button
+              onClick={() => void startSaveFlow()}
+              disabled={isSaving || !settings.canManageLanes || Boolean(laneValidationError)}
+            >
               {isSaving ? 'Saving...' : 'Save Lanes'}
             </Button>
           </div>
