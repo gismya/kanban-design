@@ -43,7 +43,7 @@ export function KanbanColumn({ status, title, tasks, members, onTaskClick, onQui
       </header>
 
       <SortableContext items={tasks.map((task) => task.id)} strategy={verticalListSortingStrategy}>
-        <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-contain pr-1">
+        <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-y-contain pr-1">
           {tasks.length > 0 ? (
             tasks.map((task) => (
               <TaskCard
