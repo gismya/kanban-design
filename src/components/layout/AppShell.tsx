@@ -40,12 +40,6 @@ export function AppShell({ title, subtitle, actions, boardProjectId, onLogout, c
         <header className="mb-6 rounded-3xl border border-white/80 bg-white/80 p-4 shadow-[0_10px_35px_rgba(0,0,0,0.06)] backdrop-blur md:p-5">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <div className="mb-2 flex items-center gap-2">
-                <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--color-accent)] text-sm font-bold text-white">
-                  KD
-                </span>
-                <span className="font-display text-lg tracking-wide">Kanban Design</span>
-              </div>
               <h1 className="font-display text-2xl leading-tight md:text-3xl">{title}</h1>
               {subtitle ? <p className="mt-1 text-sm text-[var(--color-subtle)]">{subtitle}</p> : null}
             </div>
