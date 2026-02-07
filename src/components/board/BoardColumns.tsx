@@ -52,8 +52,8 @@ export function BoardColumns({
       onDragCancel={onDragCancel}
       onDragEnd={(event) => void onDragEnd(event)}
     >
-      <div className="min-h-0 flex-1 overflow-x-auto pb-2">
-        <div className="flex h-full min-h-0 min-w-full w-max gap-4">
+      <div className="min-h-0 flex-1 -mx-4 overflow-x-auto overflow-y-visible px-4 pb-2 sm:-mx-6 sm:px-6 lg:-mx-10 lg:px-10">
+        <div className="flex h-full min-h-0 min-w-full w-max gap-4 px-1">
           {columns.map((column, index) => (
             <div
               key={column.status}
