@@ -38,29 +38,34 @@ export function AppShell({ title, subtitle, actions, boardProjectId, onLogout, c
 
       <div className="relative mx-auto flex min-h-[calc(100dvh-3rem)] max-w-[1500px] flex-col">
         <header className="mb-6 rounded-3xl border border-white/80 bg-white/80 p-4 shadow-[0_10px_35px_rgba(0,0,0,0.06)] backdrop-blur md:p-5">
-          <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <h1 className="font-display text-2xl leading-tight md:text-3xl">{title}</h1>
               {subtitle ? <p className="mt-1 text-sm text-[var(--color-subtle)]">{subtitle}</p> : null}
             </div>
 
-            <div className="flex items-center gap-2">
-              <NavLink to="/projects" label="Projects" active={location.pathname.startsWith('/projects')} />
-              {boardProjectId ? (
-                <NavLink
-                  to={`/board/${boardProjectId}`}
-                  label="Board"
-                  active={location.pathname.startsWith('/board')}
-                />
-              ) : (
-                <span className="rounded-full px-3 py-2 text-sm font-medium text-[var(--color-subtle)]/60">
-                  Board
-                </span>
-              )}
-              {actions}
-              <Button variant="secondary" onClick={() => void onLogout()}>
-                Log out
-              </Button>
+            <div className="flex w-full flex-col items-start gap-2 md:w-auto md:min-w-fit md:items-end">
+              <div className="flex flex-wrap items-center justify-start gap-2 md:justify-end">
+                <NavLink to="/projects" label="Projects" active={location.pathname.startsWith('/projects')} />
+                {boardProjectId ? (
+                  <NavLink
+                    to={`/board/${boardProjectId}`}
+                    label="Board"
+                    active={location.pathname.startsWith('/board')}
+                  />
+                ) : (
+                  <span className="rounded-full px-3 py-2 text-sm font-medium text-[var(--color-subtle)]/60">
+                    Board
+                  </span>
+                )}
+              </div>
+
+              <div className="flex flex-wrap items-center justify-start gap-2 md:justify-end">
+                {actions}
+                <Button variant="secondary" onClick={() => void onLogout()}>
+                  Log out
+                </Button>
+              </div>
             </div>
           </div>
         </header>
