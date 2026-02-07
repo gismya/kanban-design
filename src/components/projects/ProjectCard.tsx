@@ -13,13 +13,13 @@ export function ProjectCard({ project, onOpen, onOpenSettings }: ProjectCardProp
   const canManageLanes = project.viewerRole ? canManageProject(project.viewerRole) : false
 
   return (
-    <article className="group relative overflow-hidden rounded-3xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 shadow-[0_8px_26px_rgba(17,24,39,0.08)] transition hover:-translate-y-1 hover:shadow-[0_16px_40px_rgba(17,24,39,0.14)]">
+    <article className="relative flex h-full flex-col overflow-hidden rounded-3xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 shadow-[0_8px_26px_rgba(17,24,39,0.08)]">
       <div
         className="absolute -right-12 -top-12 h-28 w-28 rounded-full opacity-20 blur-xl"
         style={{ backgroundColor: project.themeColor }}
       />
 
-      <div className="relative space-y-4">
+      <div className="relative flex h-full flex-col gap-4">
         <div>
           <h3 className="font-display text-xl">{project.name}</h3>
           <p className="mt-2 text-sm text-[var(--color-subtle)]">{project.description}</p>
@@ -31,7 +31,7 @@ export function ProjectCard({ project, onOpen, onOpenSettings }: ProjectCardProp
           {project.recentActivity ? <Badge tone="neutral">{project.recentActivity}</Badge> : null}
         </div>
 
-        <div className="grid grid-cols-1 gap-2">
+        <div className="mt-auto grid grid-cols-1 gap-2">
           <Button className="w-full" onClick={() => onOpen(project.id)}>
             Open Board
           </Button>
