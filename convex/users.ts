@@ -1,7 +1,12 @@
 import { mutation, query } from './_generated/server'
 import { v } from 'convex/values'
 import { buildAvatarUrl, escapePrefixForRange, normalizeEmail, requireUserId } from './lib/authHelpers'
-import { canManageProject } from '../shared/domain'
+import { resolveProjectLanes } from './lib/lanes'
+import { canManageProject, MEMBER_PROJECT_ROLE, OWNER_PROJECT_ROLE } from '../shared/domain'
+
+const EVERYONE_PROJECT_NAME = 'Everyone'
+const EVERYONE_PROJECT_DESCRIPTION = 'Shared project that all users can access.'
+const EVERYONE_PROJECT_THEME_COLOR = '#0f766e'
 
 export const ensureCurrentProfile = mutation({
   args: {
@@ -38,6 +43,51 @@ export const ensureCurrentProfile = mutation({
         emailLower: email,
         name: nextName,
         avatarUrl,
+      })
+    }
+
+    const now = new Date().toISOString()
+    const everyoneProjectName = EVERYONE_PROJECT_NAME.toLowerCase()
+
+    const allProjects = await ctx.db.query('projects').collect()
+    const everyoneProject = allProjects.find(
+      (project) => project.name.trim().toLowerCase() === everyoneProjectName,
+    )
+
+    const everyoneProjectId =
+      everyoneProject?._id ??
+      (await ctx.db.insert('projects', {
+        name: EVERYONE_PROJECT_NAME,
+        description: EVERYONE_PROJECT_DESCRIPTION,
+        themeColor: EVERYONE_PROJECT_THEME_COLOR,
+        lanes: resolveProjectLanes(undefined),
+        createdBy: userId,
+        createdAt: now,
+        updatedAt: now,
+      }))
+
+    if (!everyoneProject) {
+      await ctx.db.insert('projectMembers', {
+        projectId: everyoneProjectId,
+        userId,
+        role: OWNER_PROJECT_ROLE,
+        addedBy: userId,
+        createdAt: now,
+      })
+    }
+
+    const existingEveryoneMembership = await ctx.db
+      .query('projectMembers')
+      .withIndex('by_project_user', (q) => q.eq('projectId', everyoneProjectId).eq('userId', userId))
+      .unique()
+
+    if (!existingEveryoneMembership) {
+      await ctx.db.insert('projectMembers', {
+        projectId: everyoneProjectId,
+        userId,
+        role: MEMBER_PROJECT_ROLE,
+        addedBy: userId,
+        createdAt: now,
       })
     }
 
