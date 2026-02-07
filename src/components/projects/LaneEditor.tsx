@@ -57,6 +57,11 @@ export function LaneEditor({ lanes, onChange, laneCounts, disabled }: LaneEditor
       (lane) => lane.id !== laneId && normalizeLaneNameForComparison(lane.name) === normalizedNameLower,
     )
 
+    if (!normalizedName) {
+      setError('Lane name is required.')
+      return
+    }
+
     if (normalizedName && isDuplicateName) {
       setError('Lane name must be unique.')
       return
