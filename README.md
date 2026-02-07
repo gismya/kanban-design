@@ -60,3 +60,64 @@ npm run build     # typecheck + production build
 npm run lint      # eslint
 npm run test:run  # vitest (single run)
 ```
+
+## Deploy to GitHub Pages + Convex
+
+This app is configured for GitHub Pages:
+
+- Production build output goes to `docs/`
+- Vite base path defaults to `/kanban-design/` (override with `GITHUB_PAGES_BASE_PATH`)
+- Routing uses `HashRouter` for static-host refresh safety
+
+### 1) Deploy Convex backend
+
+```bash
+npx convex deploy
+```
+
+Copy the production URL printed by Convex (for example `https://happy-animal-123.convex.cloud`).
+
+### 2) Configure frontend env values
+
+Copy and edit:
+
+```bash
+cp .env.production.local.example .env.production.local
+```
+
+Then set `VITE_CONVEX_URL` in `.env.production.local` to your Convex production URL.
+
+### 3) Build static site into `docs/`
+
+```bash
+npm run build
+```
+
+### 4) Publish with GitHub Pages
+
+In GitHub repo settings:
+
+- Open `Settings > Pages`
+- Set `Source` to `Deploy from a branch`
+- Select your deployment branch (commonly `main`) and folder `/docs`
+- Save
+
+If your repository name is not `kanban-design`, set the base path before building:
+
+```bash
+GITHUB_PAGES_BASE_PATH="/<your-repo-name>/" npm run build
+```
+
+### 5) Tell Convex your production site URL
+
+After your Pages URL is live (for example `https://<user>.github.io/<repo>/`), set:
+
+```bash
+npx convex env set CONVEX_SITE_URL "https://<user>.github.io/<repo>/"
+```
+
+Then redeploy Convex:
+
+```bash
+npx convex deploy
+```
