@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMutation, useQuery } from 'convex/react'
 import { useAuthActions } from '@convex-dev/auth/react'
@@ -8,21 +8,6 @@ import { CreateProjectModal } from '../components/projects/CreateProjectModal'
 import { ProjectCard } from '../components/projects/ProjectCard'
 import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
-import type { Project } from '../types/domain'
-
-type ProjectFilter = 'all' | 'active' | 'recent'
-
-function matchesFilter(project: Project, filter: ProjectFilter): boolean {
-  if (filter === 'all') {
-    return true
-  }
-
-  if (filter === 'active') {
-    return project.openTaskCount > 0
-  }
-
-  return project.recentActivity?.toLowerCase().includes('updated') ?? false
-}
 
 export function ProjectsPage() {
   const navigate = useNavigate()
@@ -33,26 +18,20 @@ export function ProjectsPage() {
   const projects = useQuery(api.projects.listForCurrentUser)
 
   const [search, setSearch] = useState('')
-  const [filter, setFilter] = useState<ProjectFilter>('all')
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
 
   useEffect(() => {
     void ensureCurrentProfile({})
   }, [ensureCurrentProfile])
 
-  const filteredProjects = useMemo(() => {
-    const projectList = projects ?? []
+  const filteredProjects = (projects ?? []).filter((project) => {
     const query = search.trim().toLowerCase()
-
-    return projectList.filter((project) => {
-      const matchesSearch =
-        !query ||
-        project.name.toLowerCase().includes(query) ||
-        project.description.toLowerCase().includes(query)
-
-      return matchesSearch && matchesFilter(project, filter)
-    })
-  }, [filter, projects, search])
+    return (
+      !query ||
+      project.name.toLowerCase().includes(query) ||
+      project.description.toLowerCase().includes(query)
+    )
+  })
 
   const openProject = (projectId: string) => {
     navigate(`/board/${projectId}`)
@@ -75,7 +54,7 @@ export function ProjectsPage() {
       }
     >
       <section className="mb-4 rounded-3xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-[0_8px_28px_rgba(15,23,42,0.08)] md:p-5">
-        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div className="flex flex-col gap-3">
           <Input
             value={search}
             onChange={(event) => setSearch(event.target.value)}
@@ -83,18 +62,6 @@ export function ProjectsPage() {
             aria-label="Search projects"
             className="md:max-w-sm"
           />
-
-          <div className="flex flex-wrap gap-2">
-            {(['all', 'active', 'recent'] as const).map((item) => (
-              <Button
-                key={item}
-                variant={filter === item ? 'primary' : 'secondary'}
-                onClick={() => setFilter(item)}
-              >
-                {item}
-              </Button>
-            ))}
-          </div>
         </div>
       </section>
 
@@ -131,7 +98,7 @@ export function ProjectsPage() {
 
       {projects !== undefined && projects.length > 0 && filteredProjects.length === 0 ? (
         <p className="mt-4 rounded-2xl border border-dashed border-[var(--color-border)] bg-white/70 px-4 py-6 text-center text-sm text-[var(--color-subtle)]">
-          No projects match your current filters.
+          No projects match your search.
         </p>
       ) : null}
 
