@@ -71,7 +71,7 @@ export function CreateProjectModal({ isOpen, onClose, onCreate }: CreateProjectM
         }
       }}
     >
-      <div className="w-full max-w-xl rounded-3xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 shadow-[0_20px_45px_rgba(15,23,42,0.22)] md:p-6">
+      <div className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-3xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 shadow-[0_20px_45px_rgba(15,23,42,0.22)] md:p-6">
         <div className="mb-5 flex items-center justify-between gap-3">
           <h2 className="font-display text-2xl">Create New Project</h2>
           <Button variant="ghost" onClick={onClose} disabled={isSubmitting}>

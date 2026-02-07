@@ -40,7 +40,7 @@ export function RemovedLaneMappingModal({
         }
       }}
     >
-      <div className="w-full max-w-xl rounded-3xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 shadow-[0_20px_45px_rgba(15,23,42,0.22)] md:p-6">
+      <div className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-3xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 shadow-[0_20px_45px_rgba(15,23,42,0.22)] md:p-6">
         <h2 className="font-display text-2xl">Map Removed Lanes</h2>
         <p className="mt-2 text-sm text-[var(--color-subtle)]">
           Each removed lane still has tasks. Choose where those tasks should move.

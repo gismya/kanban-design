@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { Button } from '../ui/Button'
 
@@ -28,6 +29,7 @@ function NavLink({ to, label, active }: { to: string; label: string; active: boo
 
 export function AppShell({ title, subtitle, actions, boardProjectId, onLogout, children }: AppShellProps) {
   const location = useLocation()
+  const [isMobileHeaderCollapsed, setIsMobileHeaderCollapsed] = useState(true)
 
   return (
     <>
@@ -41,10 +43,27 @@ export function AppShell({ title, subtitle, actions, boardProjectId, onLogout, c
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <h1 className="font-display text-2xl leading-tight md:text-3xl">{title}</h1>
-              {subtitle ? <p className="mt-1 text-sm text-[var(--color-subtle)]">{subtitle}</p> : null}
+              {subtitle ? (
+                <p className={`${isMobileHeaderCollapsed ? 'hidden md:block' : 'block'} mt-1 text-sm text-[var(--color-subtle)]`}>
+                  {subtitle}
+                </p>
+              ) : null}
             </div>
 
-            <div className="flex w-full flex-col items-start gap-2 md:w-auto md:min-w-fit md:items-end">
+            <Button
+              variant="ghost"
+              className="min-h-0 rounded-lg px-3 py-1 text-xs md:hidden"
+              type="button"
+              aria-controls="app-shell-header-panel"
+              aria-expanded={!isMobileHeaderCollapsed}
+              onClick={() => setIsMobileHeaderCollapsed((collapsed) => !collapsed)}
+            >
+              {isMobileHeaderCollapsed ? 'Show header' : 'Hide header'}
+            </Button>
+            <div
+              id="app-shell-header-panel"
+              className={`${isMobileHeaderCollapsed ? 'hidden md:flex' : 'flex'} w-full flex-col items-start gap-2 md:w-auto md:min-w-fit md:items-end`}
+            >
               <div className="flex flex-wrap items-center justify-start gap-2 md:justify-end">
                 <NavLink to="/projects" label="Projects" active={location.pathname.startsWith('/projects')} />
                 {boardProjectId ? (
